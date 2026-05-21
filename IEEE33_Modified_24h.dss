@@ -1,0 +1,162 @@
+// IEEE33_Modified_24h.dss
+// 说明：
+// 1) 采用三相平衡等效（phases=3），每条Line使用相同的R1/X1（与IEEE33等效单相数据一致地按比例使用）。
+// 2) 节点负荷使用IEEE33常见基准值（P[kW], Q[kVAr]）。
+// 3) PV/WT/DG用“负荷取负功率”的方式等效为并网注入；
+//    ESS用Loadshape的正/负切换等效充/放电（首版简化，不做SOC约束）。
+// 4) 这是“可编译的网络与时序定义”，求解驱动放在 calc_node_carbon.py 里逐小时采样。
+//
+// 你后续若有真实 PV/WT/DG/碳因子数据，只需改calc_node_carbon.py里的参数或重新生成本文件即可。
+
+Clear
+
+// Circuit base
+New Circuit.IEEE33_Modified_24h basekv=12.66 pu=1 phases=3 bus1=1
+
+Set MaxIterations=200
+Set ControlMode=Static
+Set DefaultBaseFrequency=60
+Set VoltageBases=12.66
+
+// Slack / grid connection
+New Vsource.Grid bus1=1.1.2.3 bus2=0 basekv=12.66 pu=1 phases=3 angle=0
+
+// -------------------------------------------------------------------
+// Loadshapes (placeholders)
+// -------------------------------------------------------------------
+// 基础负荷：24点，每点间隔=1h
+New Loadshape.LS_Load npts=24 interval=1 mult=(0.60 0.58 0.55 0.52 0.50 0.50 0.55 0.62 0.75 0.88 1.00 1.05 1.10 1.12 1.10 1.05 0.98 0.92 0.85 0.78 0.72 0.66 0.62 0.60)
+
+// PV 出力（0..1），占位：白天为主
+New Loadshape.LS_PV npts=24 interval=1 mult=(0 0 0 0 0.10 0.30 0.50 0.70 0.85 0.95 1.00 0.92 0.85 0.80 0.78 0.70 0.55 0.40 0.20 0.10 0 0 0 0)
+
+// WT 出力（0..1），占位：平滑波动
+New Loadshape.LS_WT npts=24 interval=1 mult=(0.55 0.57 0.60 0.62 0.65 0.67 0.70 0.72 0.75 0.77 0.74 0.72 0.70 0.68 0.65 0.63 0.60 0.58 0.56 0.54 0.53 0.54 0.56 0.58)
+
+// DG 占位：常值运行（取决于你要的调度策略，可在calc_node_carbon.py里再调整）
+New Loadshape.LS_DG npts=24 interval=1 mult=(0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80 0.80)
+
+// ESS 占位：充电为正，放电为负（base kW 取正值，这样mult为负时变成注入）
+// 充电：0~5h；放电：18~23h
+New Loadshape.LS_ESS npts=24 interval=1 mult=(1.00 1.00 0.90 0.80 0.60 0.40 0 0 0 0 0 0 0 0 0 0 0 0 -0.40 -0.70 -1.00 -1.00 -0.70 -0.40)
+
+// -------------------------------------------------------------------
+// Line definitions (IEEE33)
+// -------------------------------------------------------------------
+// 采用长度Length=1，Units=none，使得R1/X1按“总阻抗(Ω)”直接生效。
+
+// Original IEEE33 radial branches
+New Line.L_1_2   bus1=1 bus2=2  phases=3 r1=0.0922  x1=0.0470  length=1 units=none
+New Line.L_2_3   bus1=2 bus2=3  phases=3 r1=0.4930  x1=0.2511  length=1 units=none
+New Line.L_3_4   bus1=3 bus2=4  phases=3 r1=0.3660  x1=0.1864  length=1 units=none
+New Line.L_4_5   bus1=4 bus2=5  phases=3 r1=0.3811  x1=0.1941  length=1 units=none
+New Line.L_5_6   bus1=5 bus2=6  phases=3 r1=0.8190  x1=0.7070  length=1 units=none
+New Line.L_6_7   bus1=6 bus2=7  phases=3 r1=0.1872  x1=0.6188  length=1 units=none
+New Line.L_7_8   bus1=7 bus2=8  phases=3 r1=1.7114  x1=1.2351  length=1 units=none
+New Line.L_8_9   bus1=8 bus2=9  phases=3 r1=1.0300  x1=0.7400  length=1 units=none
+New Line.L_9_10  bus1=9 bus2=10 phases=3 r1=1.0440  x1=0.7400  length=1 units=none
+New Line.L_10_11 bus1=10 bus2=11 phases=3 r1=0.1966 x1=0.0650  length=1 units=none
+New Line.L_11_12 bus1=11 bus2=12 phases=3 r1=0.3744 x1=0.1238  length=1 units=none
+New Line.L_12_13 bus1=12 bus2=13 phases=3 r1=1.4680 x1=1.1550  length=1 units=none
+New Line.L_13_14 bus1=13 bus2=14 phases=3 r1=0.5416 x1=0.7129  length=1 units=none
+New Line.L_14_15 bus1=14 bus2=15 phases=3 r1=0.5910 x1=0.5260  length=1 units=none
+New Line.L_15_16 bus1=15 bus2=16 phases=3 r1=0.7463 x1=0.5450  length=1 units=none
+New Line.L_16_17 bus1=16 bus2=17 phases=3 r1=1.2890 x1=1.7210  length=1 units=none
+New Line.L_17_18 bus1=17 bus2=18 phases=3 r1=0.7320 x1=0.5740  length=1 units=none
+New Line.L_2_19  bus1=2 bus2=19 phases=3 r1=0.1640 x1=0.1565  length=1 units=none
+New Line.L_19_20 bus1=19 bus2=20 phases=3 r1=1.5042 x1=1.3554  length=1 units=none
+New Line.L_20_21 bus1=20 bus2=21 phases=3 r1=0.4095 x1=0.4784  length=1 units=none
+New Line.L_21_22 bus1=21 bus2=22 phases=3 r1=0.7089 x1=0.9373  length=1 units=none
+New Line.L_3_23  bus1=3 bus2=23 phases=3 r1=0.4512 x1=0.3083  length=1 units=none
+New Line.L_23_24 bus1=23 bus2=24 phases=3 r1=0.8980 x1=0.7091  length=1 units=none
+New Line.L_24_25 bus1=24 bus2=25 phases=3 r1=0.8960 x1=0.7011  length=1 units=none
+New Line.L_6_26  bus1=6 bus2=26 phases=3 r1=0.2030 x1=0.1034  length=1 units=none
+New Line.L_26_27 bus1=26 bus2=27 phases=3 r1=0.2842 x1=0.1447  length=1 units=none
+New Line.L_27_28 bus1=27 bus2=28 phases=3 r1=1.0590 x1=0.9337  length=1 units=none
+New Line.L_28_29 bus1=28 bus2=29 phases=3 r1=0.8042 x1=0.7006  length=1 units=none
+New Line.L_29_30 bus1=29 bus2=30 phases=3 r1=0.5075 x1=0.2585  length=1 units=none
+New Line.L_30_31 bus1=30 bus2=31 phases=3 r1=0.9744 x1=0.9630  length=1 units=none
+New Line.L_31_32 bus1=31 bus2=32 phases=3 r1=0.3105 x1=0.3619  length=1 units=none
+New Line.L_32_33 bus1=32 bus2=33 phases=3 r1=0.3410 x1=0.5302  length=1 units=none
+
+// Tie-lines / interconnection switches (from your Figure 4-20)
+New Line.TIE_7_20   bus1=7  bus2=20 phases=3 r1=2.0  x1=2.0   length=1 units=none
+New Line.TIE_8_14   bus1=8  bus2=14 phases=3 r1=2.0  x1=2.0   length=1 units=none
+New Line.TIE_11_21  bus1=11 bus2=21 phases=3 r1=2.0  x1=2.0   length=1 units=none
+New Line.TIE_17_32  bus1=17 bus2=32 phases=3 r1=0.5  x1=0.5   length=1 units=none
+New Line.TIE_24_28  bus1=24 bus2=28 phases=3 r1=0.5  x1=0.5   length=1 units=none
+
+// -------------------------------------------------------------------
+// Loads and DERs
+// -------------------------------------------------------------------
+// power factor of DERs: 0.85 (Q = P*tan(arccos(0.85)))
+// tan(arccos(0.85)) ~= 0.619
+
+// Demand loads (IEEE33 base loads, placeholder time scaling via LS_Load)
+// Bus1 has 0 load and is omitted.
+New Load.LD_2  bus1=2  phases=3 conn=wye model=1 kV=12.66 kW=100  kvar=60  Daily=LS_Load
+New Load.LD_3  bus1=3  phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_4  bus1=4  phases=3 conn=wye model=1 kV=12.66 kW=120  kvar=80  Daily=LS_Load
+New Load.LD_5  bus1=5  phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=30  Daily=LS_Load
+New Load.LD_6  bus1=6  phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_7  bus1=7  phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=100 Daily=LS_Load
+New Load.LD_8  bus1=8  phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=100 Daily=LS_Load
+New Load.LD_9  bus1=9  phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_10 bus1=10 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_11 bus1=11 phases=3 conn=wye model=1 kV=12.66 kW=45   kvar=30  Daily=LS_Load
+New Load.LD_12 bus1=12 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=35  Daily=LS_Load
+New Load.LD_13 bus1=13 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=35  Daily=LS_Load
+New Load.LD_14 bus1=14 phases=3 conn=wye model=1 kV=12.66 kW=120  kvar=80  Daily=LS_Load
+New Load.LD_15 bus1=15 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=10  Daily=LS_Load
+New Load.LD_16 bus1=16 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_17 bus1=17 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_18 bus1=18 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_19 bus1=19 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_20 bus1=20 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_21 bus1=21 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_22 bus1=22 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=40  Daily=LS_Load
+New Load.LD_23 bus1=23 phases=3 conn=wye model=1 kV=12.66 kW=90   kvar=50  Daily=LS_Load
+New Load.LD_24 bus1=24 phases=3 conn=wye model=1 kV=12.66 kW=420  kvar=200 Daily=LS_Load
+New Load.LD_25 bus1=25 phases=3 conn=wye model=1 kV=12.66 kW=420  kvar=200 Daily=LS_Load
+New Load.LD_26 bus1=26 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=25  Daily=LS_Load
+New Load.LD_27 bus1=27 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=25  Daily=LS_Load
+New Load.LD_28 bus1=28 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=20  Daily=LS_Load
+New Load.LD_29 bus1=29 phases=3 conn=wye model=1 kV=12.66 kW=120  kvar=70  Daily=LS_Load
+New Load.LD_30 bus1=30 phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=600 Daily=LS_Load
+New Load.LD_31 bus1=31 phases=3 conn=wye model=1 kV=12.66 kW=150  kvar=70  Daily=LS_Load
+New Load.LD_32 bus1=32 phases=3 conn=wye model=1 kV=12.66 kW=210  kvar=100 Daily=LS_Load
+New Load.LD_33 bus1=33 phases=3 conn=wye model=1 kV=12.66 kW=60   kvar=40  Daily=LS_Load
+
+// DER capacities (placeholders; you can modify freely later)
+// PV: buses 7, 10, 24, 27 ; Pmax=100 kW each
+// WT: buses 13, 30 ; Pmax=150 kW each
+// DG: buses 2, 4, 16, 17, 20, 21 ; Pmax=80 kW each
+// ESS: buses 8, 11, 32 ; Pmax=200 kW each, charging/discharging via LS_ESS
+//
+// Qmax = Pmax * 0.619
+
+// PV (negative loads => injection)
+New Load.PV_7  bus1=7  phases=3 conn=wye model=1 kV=12.66 kW=-100  kvar=-61.9 Daily=LS_PV
+New Load.PV_10 bus1=10 phases=3 conn=wye model=1 kV=12.66 kW=-100  kvar=-61.9 Daily=LS_PV
+New Load.PV_24 bus1=24 phases=3 conn=wye model=1 kV=12.66 kW=-100  kvar=-61.9 Daily=LS_PV
+New Load.PV_27 bus1=27 phases=3 conn=wye model=1 kV=12.66 kW=-100  kvar=-61.9 Daily=LS_PV
+
+// WT
+New Load.WT_13 bus1=13 phases=3 conn=wye model=1 kV=12.66 kW=-150  kvar=-92.9 Daily=LS_WT
+New Load.WT_30 bus1=30 phases=3 conn=wye model=1 kV=12.66 kW=-150  kvar=-92.9 Daily=LS_WT
+
+// DG
+New Load.DG_2  bus1=2  phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+New Load.DG_4  bus1=4  phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+New Load.DG_16 bus1=16 phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+New Load.DG_17 bus1=17 phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+New Load.DG_20 bus1=20 phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+New Load.DG_21 bus1=21 phases=3 conn=wye model=1 kV=12.66 kW=-80  kvar=-49.5 Daily=LS_DG
+
+// ESS (charging positive; discharging negative via Loadshape multiplier sign)
+New Load.ESS_8  bus1=8  phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=123.8 Daily=LS_ESS
+New Load.ESS_11 bus1=11 phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=123.8 Daily=LS_ESS
+New Load.ESS_32 bus1=32 phases=3 conn=wye model=1 kV=12.66 kW=200  kvar=123.8 Daily=LS_ESS
+
+// End of file: this DSS defines the model only.
+
